@@ -1,32 +1,29 @@
 const path = require('path');
 const fs = require('fs');
 
-const folderCopy = path.join(__dirname, 'files-copy');
-const folder = path.join(__dirname, 'files');
+const pathFiles = path.join(__dirname, './files');
+const pathFilesCopy = path.join(__dirname, './files-copy');
 
-fs.promises.readdir(folder)
-.then(filenames => {
-    fs.stat(folderCopy, function(err) {
-        if (!err) {
-            fs.rmdir(folderCopy, { recursive: true, force: true }, (err) => {console.log('Директория удалена');});
-            if (err) throw err;
-            console.log('Директория есть');
-          }
-    });   
-    fs.mkdir(folderCopy, {recursive:true}, err => {
-        if (err) throw err;
-        console.log('Директория была создана');
-      });
-  for (let filename of filenames) {
-    const fDirectIn = path.join(__dirname, 'files', filename);
-    const fDirectOut = path.join(__dirname, 'files-copy', filename);  
+async function copyDir() {
+  try {
+    await fs.promises.rmdir(pathFilesCopy, { recursive: true, force: true });
+    await fs.promises.mkdir(pathFilesCopy, { recursive: true });
 
-    const streamIn = fs.createReadStream(fDirectIn, 'utf-8');
-    const streamOut =  fs.createWriteStream(fDirectOut);
-    streamIn.pipe(streamOut);
+    const dirFiles = await fs.promises.readdir(pathFiles, { withFileTypes: true });
+
+    for (let file of dirFiles) {
+      let myFiles = path.join(pathFiles, `./${file.name}`);
+      let myFilesCopy = path.join(pathFilesCopy, `./${file.name}`);
+      if (file.isDirectory()) {
+        copyDir(myFiles, myFilesCopy);
+      } else {
+        await fs.promises.copyFile(myFiles, myFilesCopy);
+      }
+    }
+
+  } catch (err) {
+    console.error(err.message);
   }
-})
+}
 
-.catch(err => {
-  console.log(err);
-})
+copyDir();
